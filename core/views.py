@@ -9,51 +9,111 @@ from django.core.mail import EmailMessage
 from django.shortcuts import render,redirect
 from django.contrib import messages
 import os
+import base64
 from PIL import Image
 import numpy as np
 import cv2
 from django.contrib.auth import get_user_model
+from django.utils.timezone import now
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
+import os
+from io import BytesIO
+from email.mime.image import MIMEImage
+from email.utils import make_msgid
 
-
-# Create your methods here.
 def send_booking_email(to_email, event, seats, qr_path):
-    """
-    Sends a booking confirmation email with event details, QR code, and event image.
-    """
-    subject = f'🎟️ Your Booking for {event.name} is Confirmed!'
+    subject = f'Your Booking for {event.name} is Confirmed!'
+    total_price = event.price * seats
+    event_datetime = event.date.strftime('%A, %d %B %Y | %I:%M %p')
 
-    body = (
-        f"Hello,\n\n"
-        f"Thank you for booking *{seats} seat(s)* for the event **{event.name}**.\n\n"
-        f"Here are your event details:\n"
-        f"📅 Date & Time: {event.date.strftime('%A, %d %B %Y at %I:%M %p')}\n"
-        f"📍 Location: {event.location or 'To be announced'}\n"
-        f"👤 Organizer: {event.organizer or 'Event Team'}\n"
-        f"💺 Seats Booked: {seats}\n"
-        f"💰 Total Price: ₹{event.price * seats:.2f}\n\n"
-        f"📝 Description:\n{event.description or 'No additional details provided.'}\n\n"
-        f"🎫 Your QR code ticket is attached to this email.\n"
-        f"🖼️ We’ve also attached the event poster/image for your reference.\n\n"
-        f"Looking forward to seeing you there!\n\n"
-        f"Regards,\n"
-        f"{event.organizer or 'Event Team'}"
+    # Generate CIDs
+    qr_cid = make_msgid(domain='eventmail.local')[1:-1]
+    event_cid = make_msgid(domain='eventmail.local')[1:-1]
+
+    # Plain Text Body
+    text_body = (
+        f"Your booking for {event.name} is confirmed!\n\n"
+        f"Date & Time: {event_datetime}\n"
+        f"Location: {event.location}\n"
+        f"Organizer: {event.organizer}\n"
+        f"Seats Booked: {seats}\n"
+        f"Total Price: ₹{total_price:.2f}\n\n"
+        f"QR code and event image are attached.\n"
     )
 
+    # HTML Body using CID for images
+    html_body = f"""
+    <html>
+    <body style="margin:0; padding:0; background-color:#121212; font-family:Arial,sans-serif; color:#f0f0f0;">
+    <div style="max-width:600px; margin:20px auto; background:linear-gradient(145deg,#1e1e1e,#2a2a2a); border:1px solid #3a3a3a; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,0.5); padding:20px;">
+
+        <h2 style="text-align:center; color:#27ae60;">🎟️ Booking Confirmed</h2>
+        <p style="text-align:center; color:#ccc;">Your booking for <strong>{event.name}</strong> is confirmed!</p>
+
+        {'<div style="text-align:center;"><img src="cid:{}" style="width:100%; max-width:300px; border-radius:12px; object-fit:cover;" alt="Event Image" /></div>'.format(event_cid) if event.image else ''}
+
+        <table style="width:100%; font-size:14px; margin-top:20px;">
+            <tr><td><strong>Date & Time:</strong></td><td>{event_datetime}</td></tr>
+            <tr><td><strong>Location:</strong></td><td>{event.location or 'To be announced'}</td></tr>
+            <tr><td><strong>Organizer:</strong></td><td>{event.organizer or 'Event Team'}</td></tr>
+            <tr><td><strong>Seats Booked:</strong></td><td>{seats}</td></tr>
+            <tr><td><strong>Total Price:</strong></td><td>₹{total_price:.2f}</td></tr>
+        </table>
+
+        <div style="margin-top:20px;">
+            <p><strong>Event Description:</strong></p>
+            <p style="background-color:#1b1b1b; padding:10px 15px; border-left:4px solid #27ae60; color:#bbbbbb;">
+                {event.description or 'No additional description provided.'}
+            </p>
+        </div>
+
+        <div style="text-align:center; margin-top:20px;">
+            <p>📎 Present this QR code at the event venue:</p>
+            <img src="cid:{qr_cid}" style="width:120px; height:120px; border-radius:10px; border:1px solid #444;" alt="QR Code" />
+        </div>
+
+        <p style="text-align:center; font-size:13px; color:#888; margin-top:30px;">
+            This is an automated email. Please do not reply.<br>
+            Regards, <strong>{event.organizer or 'Event Team'}</strong>
+        </p>
+
+    </div>
+    </body>
+    </html>
+    """
+
     try:
-        email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [to_email])
+        email = EmailMultiAlternatives(subject, text_body, settings.EMAIL_HOST_USER, [to_email])
+        email.attach_alternative(html_body, "text/html")
 
-        # Attach QR code file
+        # Attach inline QR image
         if os.path.exists(qr_path):
-            email.attach_file(qr_path)
+            with open(qr_path, 'rb') as f:
+                qr_image = MIMEImage(f.read())
+                qr_image.add_header('Content-ID', f'<{qr_cid}>')
+                qr_image.add_header('Content-Disposition', 'inline', filename='qr.png')
+                email.attach(qr_image)
 
-        # Attach event image if available
+        # Attach inline Event image
         if event.image and hasattr(event.image, 'path') and os.path.exists(event.image.path):
-            email.attach_file(event.image.path)
+            with open(event.image.path, 'rb') as f:
+                event_image = MIMEImage(f.read())
+                event_image.add_header('Content-ID', f'<{event_cid}>')
+                event_image.add_header('Content-Disposition', 'inline', filename='event.jpg')
+                email.attach(event_image)
+
+        # Optional: Attach as files too
+        # if os.path.exists(qr_path):
+        #     email.attach_file(qr_path)
+        # if event.image and hasattr(event.image, 'path') and os.path.exists(event.image.path):
+        #     email.attach_file(event.image.path)
 
         email.send()
-        print("Email sent successfully with QR code and event image!")
+        print("Email sent successfully with visible inline images!")
     except Exception as e:
-        print("Error sending email with attachments:", e)
+        print("Error sending email:", e)
+
 
 
 def logout_view(request):
@@ -182,25 +242,35 @@ class LoginAPIView(APIView):
         return render(request, 'login.html', {'form': serializer, 'errors': serializer.errors})
 
     
-
 class BookingCreateView(APIView):
     permission_classes = [permissions.AllowAny]  # Change if needed
+    User = get_user_model()
 
     def get(self, request, event_id, *args, **kwargs):
         if not request.session.get('access'):
-            return redirect('login')  # Redirect to login if no access token
+            return redirect('login')
 
         event = get_object_or_404(Event, id=event_id)
+        user_id = request.session.get('user_id')
+
+        bookings = []
+        if user_id:
+            try:
+                user = self.User.objects.get(id=user_id)
+                bookings = Booking.objects.filter(user=user, event__date__gt=now())
+            except self.User.DoesNotExist:
+                pass
+
         return render(request, 'booking.html', {
             'event': event,
             'user': request.session.get('username'),
             'tokens': {
                 'refresh': request.session.get('refresh'),
                 'access': request.session.get('access')
-            }
+            },
+            'bookings': bookings,
+            'now': now(),
         })
-
-    User = get_user_model()
 
     def post(self, request, event_id, *args, **kwargs):
         event = get_object_or_404(Event, id=event_id)
@@ -210,8 +280,8 @@ class BookingCreateView(APIView):
             return Response({"detail": "User not authenticated."}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
+            user = self.User.objects.get(id=user_id)
+        except self.User.DoesNotExist:
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
@@ -220,6 +290,7 @@ class BookingCreateView(APIView):
             seats_booked = 0
 
         if seats_booked <= 0:
+            bookings = Booking.objects.filter(user=user, event__date__gt=now())
             return render(request, 'booking.html', {
                 'event': event,
                 'error': "Please enter a valid number of seats.",
@@ -227,7 +298,9 @@ class BookingCreateView(APIView):
                 'tokens': {
                     'refresh': request.session.get('refresh'),
                     'access': request.session.get('access')
-                }
+                },
+                'bookings': bookings,
+                'now': now(),
             })
 
         data = {
@@ -235,7 +308,6 @@ class BookingCreateView(APIView):
             'seats_booked': seats_booked
         }
 
-        # ✅ Pass the user instance in the context
         serializer = BookingSerializer(data=data, context={'user': user})
         if serializer.is_valid():
             booking = serializer.save()
@@ -247,7 +319,7 @@ class BookingCreateView(APIView):
                 qr_path=booking.qr_code.path
             )
 
-
+            bookings = Booking.objects.filter(user=user, event__date__gt=now())
             return render(request, 'booking.html', {
                 'event': event,
                 'success': f"{booking.seats_booked} seat(s) booked successfully!",
@@ -255,9 +327,12 @@ class BookingCreateView(APIView):
                 'tokens': {
                     'refresh': request.session.get('refresh'),
                     'access': request.session.get('access')
-                }
+                },
+                'bookings': bookings,
+                'now': now(),
             })
 
+        bookings = Booking.objects.filter(user=user, event__date__gt=now())
         return render(request, 'booking.html', {
             'event': event,
             'errors': serializer.errors,
@@ -265,9 +340,10 @@ class BookingCreateView(APIView):
             'tokens': {
                 'refresh': request.session.get('refresh'),
                 'access': request.session.get('access')
-            }
+            },
+            'bookings': bookings,
+            'now': now(),
         })
-
 
     
 

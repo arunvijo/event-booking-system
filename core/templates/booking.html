@@ -5,6 +5,59 @@
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/booking.css' %}">
+<style>
+  .ticket-card {
+    background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
+    border: 1px solid #3a3a3a;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    margin-top: 30px;
+    color: #f0f0f0;
+  }
+  .ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .ticket-header img {
+    height: 100px;
+    border-radius: 10px;
+    background-color: #fff;
+  }
+  .qr-code {
+    height: 100px;
+    width: 100px;
+    object-fit: cover;
+  }
+  .ticket-body {
+    margin-top: 15px;
+  }
+  .ticket-card h5 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #ffffff;
+  }
+  .ticket-card p {
+    margin: 2px 0;
+    color: #cccccc;
+  }
+  .ticket-body .text-success {
+    color: #28a745;
+  }
+  @media (max-width: 600px) {
+    .ticket-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .ticket-header img {
+      margin-top: 15px;
+    }
+  }
+</style>
+
 <script>
   function updateTotalPrice() {
     const seatInput = document.getElementById('seats_booked');
@@ -29,18 +82,14 @@
 </script>
 
 <div class="container mt-5 booking-form-container">
-  
-  <!-- ✅ Event Image -->
+
   {% if event.image %}
     <div class="text-center mb-3">
       <img src="{{ event.image.url }}" class="img-fluid rounded" style="max-height: 300px;" alt="{{ event.name }}">
     </div>
   {% endif %}
 
-  <!-- ✅ Title -->
   <h2 class="booking-title text-center">Book Your Seat for "{{ event.name }}"</h2>
-
-  <!-- ✅ Event Description -->
   <p class="text-center text-muted mb-4">{{ event.description }}</p>
 
   {% if errors %}
@@ -65,28 +114,47 @@
   <form method="post" class="booking-form" id="booking-form">
     {% csrf_token %}
 
-    <!-- Number of Seats -->
     <div class="form-group">
       <label for="seats_booked">Number of Seats</label>
-      <input type="number" class="form-control" name="seats_booked" id="seats_booked"
-             min="1" required oninput="updateTotalPrice()">
+      <input type="number" class="form-control" name="seats_booked" id="seats_booked" min="1" required oninput="updateTotalPrice()">
     </div>
 
-    <!-- ✅ Total Price -->
     <div class="form-group mt-2">
       <label>Total Price:</label>
       <div id="total_price_display" class="font-weight-bold">₹0.00</div>
     </div>
 
-    <!-- Hidden user and event fields -->
     {{ form.user.as_hidden }}
     {{ form.event.as_hidden }}
 
-    <!-- Form actions -->
     <div class="form-group mt-4">
       <button type="submit" class="btn btn-success" onclick="confirmBookingPopup(event)">Confirm Booking</button>
       <a href="{% url 'events' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
+
+  {% if bookings %}
+    <h4 class="mt-5 text-white">Your Booked Tickets:</h4>
+    {% for booking in bookings %}
+      {% if booking.qr_code and booking.event.id == event.id and booking.event.date > now %}
+        <div class="ticket-card">
+          <div class="ticket-header">
+            <div>
+              <h5>{{ booking.event.name }}</h5>
+              <p>{{ booking.event.date|date:"g:i A | D, j M, Y" }}</p>
+              <p>{{ booking.event.location }}</p>
+              <strong>Seats:</strong> {{ booking.seats_booked }}
+            </div>
+            <img src="{{ booking.qr_code.url }}" class="qr-code" alt="QR Code">
+          </div>
+          <div class="ticket-body">
+            <p><strong>Organizer:</strong> {{ booking.event.organizer }}</p>
+            <p><strong>Booking ID:</strong> {{ booking.id }}</p>
+            <p class="text-success font-weight-bold">Booking Confirmed</p>
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
 </div>
 {% endblock %}
