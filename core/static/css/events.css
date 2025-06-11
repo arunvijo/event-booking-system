@@ -1,0 +1,217 @@
+/* Title Styling */
+.events-title,
+.event-detail-title {
+    text-align: center;
+    margin-bottom: 40px;
+    font-size: 2.8rem;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 0 0 12px rgba(0, 123, 255, 0.4);
+    letter-spacing: 1px;
+}
+
+/* Filter Form Styling */
+form.row {
+    background: #222;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    margin-bottom: 40px;
+}
+
+/* Responsive Grid */
+.events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    padding: 0 15px 50px;
+}
+
+/* Event Card - Used in both list and detail views */
+.event-card,
+.event-detail-container {
+    background: linear-gradient(145deg, #2b2b2b, #1c1c1c);
+    border: 1px solid #3a3a3a;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    color: #f0f0f0;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.event-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.6);
+}
+
+/* Header styles for both views */
+.event-card h4,
+.event-header h2 {
+    font-size: 1.6rem;
+    margin-bottom: 12px;
+    color: #ffffff;
+    border-left: 4px solid #3399ff;
+    padding-left: 10px;
+}
+
+.event-card p,
+.event-info p {
+    margin: 8px 0;
+    font-size: 1rem;
+    color: #dddddd;
+}
+
+/* Detail View Specific Styles */
+.event-detail-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+}
+
+.event-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #444;
+}
+
+.event-meta .badge {
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.event-body {
+    display: flex;
+    gap: 2rem;
+}
+
+.event-info {
+    flex: 2;
+}
+
+.event-stats {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-item {
+    background-color: #3a3a3a;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.stat-label {
+    display: block;
+    font-weight: bold;
+    color: #aaa;
+    margin-bottom: 0.3rem;
+    font-size: 0.9rem;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+.event-actions {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+/* Button Styles - Consistent across both views */
+.book-button,
+.event-actions .btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 28px;
+    background: linear-gradient(to right, #007bff, #3399ff);
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 14px rgba(0, 123, 255, 0.3);
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.event-actions .btn-outline-secondary {
+    background: transparent;
+    border: 1px solid #aaa;
+    color: #fff;
+}
+
+.book-button:hover,
+.event-actions .btn:hover {
+    background: linear-gradient(to right, #0056b3, #007bff);
+    transform: scale(1.05);
+}
+
+.event-actions .btn-outline-secondary:hover {
+    background-color: #3399ff;
+    border-color: #3399ff;
+    color: #fff;
+}
+
+/* More Info Button */
+.btn-outline-light.btn-sm {
+    margin-top: 10px;
+    border-radius: 999px;
+    border: 1px solid #aaa;
+    color: #fff;
+    padding: 6px 16px;
+    transition: all 0.3s ease;
+    background: transparent;
+}
+
+.btn-outline-light.btn-sm:hover {
+    background-color: #3399ff;
+    border-color: #3399ff;
+    color: #fff;
+}
+
+/* Responsive Tweaks */
+@media (max-width: 768px) {
+    .event-card,
+    .event-detail-container {
+        padding: 20px;
+    }
+
+    .event-body {
+        flex-direction: column;
+    }
+
+    .event-actions {
+        flex-direction: row;
+        justify-content: flex-start;
+        margin-top: 2rem;
+    }
+
+    .book-button,
+    .btn-outline-light.btn-sm,
+    .event-actions .btn {
+        font-size: 0.9rem;
+        padding: 10px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .events-title,
+    .event-detail-title {
+        font-size: 2rem;
+    }
+
+    .event-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-control::placeholder {
+  color: #a0a0a0; 
+  opacity: 1; 
+}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Login or Access via QR{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2 class="text-center">Login</h2>
+
+    {% if message %}
+        <div class="alert alert-success">{{ message }}</div>
+    {% endif %}
+
+    {% if errors %}
+        <div class="alert alert-danger">
+            <ul>
+                {% for field, error_list in errors.items %}
+                    <li><strong>{{ field }}:</strong> {{ error_list|join:", " }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <!-- Login Form -->
+    <form method="post" class="mb-4" autocomplete="on">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="username">Username</label>
+            <input type="text" name="username" id="username" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+
+    <p class="text-center mt-2">Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
+
+    <hr class="my-4">
+
+    <!-- QR Upload Access -->
+    <h4 class="text-center">OR Upload QR Code to Access Event</h4>
+    {% if qr_error %}
+        <div class="alert alert-danger">{{ qr_error }}</div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label>Upload QR Code:</label>
+        <input type="file" name="qr_image" accept="image/*" class="form-control mb-2">
+        <button type="submit" class="btn btn-secondary">Continue via QR</button>
+    </form>
+</div>
+{% endblock %}

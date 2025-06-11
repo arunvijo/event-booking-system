@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {% if event %}{{ event.name }} Details{% else %}All Events{% endif %}
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/events.css' %}">
+
+{% if event %}
+  {# Detail View #}
+  <div class="event-detail-container">
+    <div class="event-header">
+      <h2>{{ event.name }}</h2>
+      <div class="event-meta">
+        <span class="badge bg-primary">{{ event.date|date:"F j, Y" }}</span>
+        <span class="badge bg-secondary">{{ event.location }}</span>
+        <span class="badge bg-success">${{ event.price }}</span>
+      </div>
+    </div>
+
+    <div class="event-body">
+      <div class="event-info">
+        {% if event.image %}
+          <div class="event-image mb-4">
+            <img src="{{ event.image }}" alt="{{ event.name }}" class="img-fluid rounded" style="max-height: 400px; width: auto;">
+          </div>
+        {% endif %}
+        
+        <h4>Event Details</h4>
+        <p>{{ event.description }}</p>
+        
+        <div class="event-stats">
+          <div class="stat-item">
+            <span class="stat-label">Organizer:</span>
+            <span class="stat-value">{{ event.organizer }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Price:</span>
+            <span class="stat-value">${{ event.price }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Total Seats:</span>
+            <span class="stat-value">{{ event.total_seats }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Available Seats:</span>
+            <span class="stat-value">{{ event.available_seats }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Date & Time:</span>
+            <span class="stat-value">{{ event.date }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Location:</span>
+            <span class="stat-value">{{ event.location }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-actions">
+        <a href="{% url 'book_event' event.id %}" class="btn btn-primary btn-lg">Book Now</a>
+        <a href="{% url 'events' %}" class="btn btn-outline-secondary">Back to Events</a>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+  {# List View #}
+  <h2 class="events-title">All Events</h2>
+
+  <!-- Search & Filters -->
+  <form method="get" class="row mb-4 g-3 align-items-center" style="color: #fff;">
+    <div class="col-md-4">
+      <input type="text" name="search" placeholder="Search by name..." value="{{ request.GET.search }}" class="form-control" />
+    </div>
+    <div class="col-md-3">
+      <select name="location" class="form-select">
+        <option value="">Filter by location</option>
+        {% for loc in unique_locations %}
+          <option value="{{ loc }}" {% if request.GET.location == loc %}selected{% endif %}>{{ loc }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="sort" class="form-select">
+        <option value="">Sort by</option>
+        <option value="date" {% if request.GET.sort == 'date' %}selected{% endif %}>Date</option>
+        <option value="price" {% if request.GET.sort == 'price' %}selected{% endif %}>Price</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex">
+      <button type="submit" class="btn btn-primary me-2">Apply</button>
+      <a href="{% url 'events' %}" class="btn btn-secondary">Clear</a>
+    </div>
+</form>
+
+  {% if events %}
+    <div class="events-grid">
+      {% for event in events %}
+        <div class="event-card">
+          {% if event.image %}
+            <img src="{{ event.image }}" alt="{{ event.name }}" class="img-fluid rounded mb-3" style="max-height: 200px; width: 100%; object-fit: cover;">
+          {% endif %}
+          <h4>{{ event.name }}</h4>
+          <p><strong>Date:</strong> {{ event.date }}</p>
+          <p><strong>Location:</strong> {{ event.location }}</p>
+          <p><strong>Price:</strong> ${{ event.price }}</p>
+          <p><strong>Available Seats:</strong> {{ event.available_seats }}</p>
+          <a href="{% url 'book_event' event.id %}" class="book-button">Book Now</a>
+          <a href="{% url 'event_detail' event.id %}" class="btn btn-outline-light btn-sm mt-2">More Info</a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No events found.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}
