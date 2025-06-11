@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Book {{ event.name }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/booking.css' %}">
+<script>
+  function updateTotalPrice() {
+    const seatInput = document.getElementById('seats_booked');
+    const totalDisplay = document.getElementById('total_price_display');
+    const eventPrice = parseFloat("{{ event.price }}");
+    const seats = parseInt(seatInput.value) || 0;
+    totalDisplay.innerText = "₹" + (seats * eventPrice).toFixed(2);
+  }
+
+  function confirmBookingPopup(event) {
+    event.preventDefault();
+    const seatCount = document.getElementById('seats_booked').value;
+    const total = document.getElementById('total_price_display').innerText;
+    if (!seatCount || seatCount <= 0) {
+      alert("Please enter a valid number of seats.");
+      return;
+    }
+    if (confirm(`You are booking ${seatCount} seat(s).\nTotal Price: ${total}\nProceed?`)) {
+      document.getElementById('booking-form').submit();
+    }
+  }
+</script>
+
+<div class="container mt-5 booking-form-container">
+  
+  <!-- ✅ Event Image -->
+  {% if event.image %}
+    <div class="text-center mb-3">
+      <img src="{{ event.image.url }}" class="img-fluid rounded" style="max-height: 300px;" alt="{{ event.name }}">
+    </div>
+  {% endif %}
+
+  <!-- ✅ Title -->
+  <h2 class="booking-title text-center">Book Your Seat for "{{ event.name }}"</h2>
+
+  <!-- ✅ Event Description -->
+  <p class="text-center text-muted mb-4">{{ event.description }}</p>
+
+  {% if errors %}
+    <div class="alert alert-danger">
+      <strong>Error:</strong>
+      <ul>
+        {% for field, error_list in errors.items %}
+          {% for error in error_list %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if success %}
+    <div class="alert alert-success">
+      <strong>Success:</strong> {{ success }}
+    </div>
+  {% endif %}
+
+  <form method="post" class="booking-form" id="booking-form">
+    {% csrf_token %}
+
+    <!-- Number of Seats -->
+    <div class="form-group">
+      <label for="seats_booked">Number of Seats</label>
+      <input type="number" class="form-control" name="seats_booked" id="seats_booked"
+             min="1" required oninput="updateTotalPrice()">
+    </div>
+
+    <!-- ✅ Total Price -->
+    <div class="form-group mt-2">
+      <label>Total Price:</label>
+      <div id="total_price_display" class="font-weight-bold">₹0.00</div>
+    </div>
+
+    <!-- Hidden user and event fields -->
+    {{ form.user.as_hidden }}
+    {{ form.event.as_hidden }}
+
+    <!-- Form actions -->
+    <div class="form-group mt-4">
+      <button type="submit" class="btn btn-success" onclick="confirmBookingPopup(event)">Confirm Booking</button>
+      <a href="{% url 'events' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

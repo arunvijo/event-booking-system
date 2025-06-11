@@ -12,27 +12,49 @@ import os
 from PIL import Image
 import numpy as np
 import cv2
-
+from django.contrib.auth import get_user_model
 
 
 # Create your methods here.
-def send_booking_email(to_email, event_name, seats, qr_path):
-    subject = 'Your Booking is Confirmed!'
+def send_booking_email(to_email, event, seats, qr_path):
+    """
+    Sends a booking confirmation email with event details, QR code, and event image.
+    """
+    subject = f'🎟️ Your Booking for {event.name} is Confirmed!'
+
     body = (
-        f'Thank you for booking {seats} seat(s) for the event: {event_name}.\n\n'
-        'Please find your QR code ticket attached.'
+        f"Hello,\n\n"
+        f"Thank you for booking *{seats} seat(s)* for the event **{event.name}**.\n\n"
+        f"Here are your event details:\n"
+        f"📅 Date & Time: {event.date.strftime('%A, %d %B %Y at %I:%M %p')}\n"
+        f"📍 Location: {event.location or 'To be announced'}\n"
+        f"👤 Organizer: {event.organizer or 'Event Team'}\n"
+        f"💺 Seats Booked: {seats}\n"
+        f"💰 Total Price: ₹{event.price * seats:.2f}\n\n"
+        f"📝 Description:\n{event.description or 'No additional details provided.'}\n\n"
+        f"🎫 Your QR code ticket is attached to this email.\n"
+        f"🖼️ We’ve also attached the event poster/image for your reference.\n\n"
+        f"Looking forward to seeing you there!\n\n"
+        f"Regards,\n"
+        f"{event.organizer or 'Event Team'}"
     )
 
     try:
         email = EmailMessage(subject, body, settings.EMAIL_HOST_USER, [to_email])
-        
+
+        # Attach QR code file
         if os.path.exists(qr_path):
             email.attach_file(qr_path)
 
+        # Attach event image if available
+        if event.image and hasattr(event.image, 'path') and os.path.exists(event.image.path):
+            email.attach_file(event.image.path)
+
         email.send()
-        print("Email sent successfully with QR code!")
+        print("Email sent successfully with QR code and event image!")
     except Exception as e:
-        print("Error sending email with QR code:", e)
+        print("Error sending email with attachments:", e)
+
 
 def logout_view(request):
     request.session.flush()
@@ -154,39 +176,99 @@ class LoginAPIView(APIView):
             request.session['username'] = user.username
             request.session['refresh'] = str(serializer.validated_data['refresh'])
             request.session['access'] = str(serializer.validated_data['access'])
+            request.session['user_id'] = user.id  # ✅ This is the missing line
             return redirect('/events/')
+
         return render(request, 'login.html', {'form': serializer, 'errors': serializer.errors})
 
     
 
 class BookingCreateView(APIView):
-    serializer_class = BookingSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Change if needed
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context.update({"request": self.request})
-        return context
+    def get(self, request, event_id, *args, **kwargs):
+        if not request.session.get('access'):
+            return redirect('login')  # Redirect to login if no access token
+
+        event = get_object_or_404(Event, id=event_id)
+        return render(request, 'booking.html', {
+            'event': event,
+            'user': request.session.get('username'),
+            'tokens': {
+                'refresh': request.session.get('refresh'),
+                'access': request.session.get('access')
+            }
+        })
+
+    User = get_user_model()
 
     def post(self, request, event_id, *args, **kwargs):
         event = get_object_or_404(Event, id=event_id)
-        data = request.data.copy()
-        data['event'] = event.id
-        data['user'] = request.user.id 
 
-        serializer = self.serializer_class(data=data, context=self.get_serializer_context())
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return Response({"detail": "User not authenticated."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            seats_booked = int(request.POST.get('seats_booked', 0))
+        except ValueError:
+            seats_booked = 0
+
+        if seats_booked <= 0:
+            return render(request, 'booking.html', {
+                'event': event,
+                'error': "Please enter a valid number of seats.",
+                'user': request.session.get('username'),
+                'tokens': {
+                    'refresh': request.session.get('refresh'),
+                    'access': request.session.get('access')
+                }
+            })
+
+        data = {
+            'event': event.id,
+            'seats_booked': seats_booked
+        }
+
+        # ✅ Pass the user instance in the context
+        serializer = BookingSerializer(data=data, context={'user': user})
         if serializer.is_valid():
             booking = serializer.save()
 
-            user_email = booking.user.email
-            event_name = booking.event.name
-            seats = booking.seats_booked
-            qr_path = booking.qr_code 
-            send_booking_email(user_email, event_name, seats, qr_path.path)
+            send_booking_email(
+                to_email=booking.user.email,
+                event=booking.event,
+                seats=booking.seats_booked,
+                qr_path=booking.qr_code.path
+            )
 
-            return Response(self.serializer_class(booking).data, status=status.HTTP_201_CREATED)
 
-        return Response("Required No. of seats not available", status=status.HTTP_400_BAD_REQUEST)
+            return render(request, 'booking.html', {
+                'event': event,
+                'success': f"{booking.seats_booked} seat(s) booked successfully!",
+                'user': request.session.get('username'),
+                'tokens': {
+                    'refresh': request.session.get('refresh'),
+                    'access': request.session.get('access')
+                }
+            })
+
+        return render(request, 'booking.html', {
+            'event': event,
+            'errors': serializer.errors,
+            'user': request.session.get('username'),
+            'tokens': {
+                'refresh': request.session.get('refresh'),
+                'access': request.session.get('access')
+            }
+        })
+
+
     
 
 class QrBookingCreateView(APIView):

@@ -1,0 +1,114 @@
+/* Booking Page Title */
+.booking-title {
+  text-align: center;
+  margin-bottom: 40px;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(0, 123, 255, 0.4);
+  letter-spacing: 1px;
+}
+
+/* Booking Form Container */
+.booking-form-container {
+  background: linear-gradient(145deg, #2b2b2b, #1c1c1c);
+  border: 1px solid #3a3a3a;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  max-width: 600px;
+  margin: 0 auto;
+  color: #f0f0f0;
+}
+
+/* Form Elements */
+.booking-form-container label {
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.booking-form-container input[type="number"],
+.booking-form-container select,
+.booking-form-container input[type="text"],
+.booking-form-container input[type="email"] {
+  background: #2d2d2d;
+  border: 1px solid #444;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  width: 100%;
+  margin-bottom: 15px;
+  transition: border 0.3s ease;
+}
+
+.booking-form-container input:focus {
+  border-color: #3399ff;
+  outline: none;
+}
+
+.booking-form-container button {
+  display: inline-block;
+  padding: 10px 28px;
+  background: linear-gradient(to right, #007bff, #3399ff);
+  color: #ffffff;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 10px;
+  box-shadow: 0 4px 14px rgba(0, 123, 255, 0.3);
+}
+
+.booking-form-container button:hover {
+  background: linear-gradient(to right, #0056b3, #007bff);
+  transform: scale(1.05);
+}
+
+/* Cancel Button */
+.booking-form-container .btn-secondary {
+  background-color: transparent;
+  color: #fff;
+  border: 1px solid #aaa;
+}
+
+.booking-form-container .btn-secondary:hover {
+  background-color: #3399ff;
+  border-color: #3399ff;
+  color: #fff;
+}
+
+/* Error Messages */
+.alert.alert-danger {
+  background-color: #3a1f1f;
+  color: #ffb3b3;
+  border-left: 4px solid #ff4d4d;
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 10px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .booking-title {
+    font-size: 2rem;
+  }
+
+  .booking-form-container {
+    padding: 20px;
+  }
+
+  .booking-form-container button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+}
+
+/* Placeholder styling */
+.form-control::placeholder {
+  color: #a0a0a0;
+  opacity: 1;
+}

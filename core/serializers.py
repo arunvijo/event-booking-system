@@ -90,14 +90,16 @@ class BookingSerializer(serializers.ModelSerializer):
         event = validated_data['event']
         seats_requested = validated_data['seats_booked']
 
+        # Update event's available seats
         event.available_seats -= seats_requested
         event.save()
 
-        booking = Booking.objects.create(
-            user=self.context['request'].user,
-            **validated_data
-        )
+        user = self.context['user']  # ✅ Use user from context
+
+        booking = Booking.objects.create(user=user, **validated_data)
         return booking
+
+
     
 class QrBookingSerializer(serializers.ModelSerializer):
     class Meta:
