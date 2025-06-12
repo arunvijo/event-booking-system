@@ -37,6 +37,7 @@ class Booking(models.Model):
     seats_booked = models.PositiveIntegerField()
     booking_time = models.DateTimeField(auto_now_add=True)
     qr_code = models.ImageField(upload_to='qr_codes/', blank=True)
+    is_checked_in = models.BooleanField(default=False)
 
     def generate_qr_code(self):
         data = (

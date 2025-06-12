@@ -53,6 +53,139 @@ from collections import defaultdict
 import json
 from django.http import HttpResponse
 
+from django.views.decorators.http import require_http_methods
+from django.http import HttpResponseNotAllowed
+import qrcode
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+import cv2
+import numpy as np
+
+# core/views.py
+
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.views.decorators.http import require_http_methods
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.contrib import messages
+from core.models import Event, Booking
+from core.utils import decode_qr_from_cv2
+import cv2
+import numpy as np
+
+from core.utils import decode_qr_from_cv2, extract_booking_id_from_text
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+@require_http_methods(["POST"])
+def admin_checkin_qr(request, event_id):
+    event = get_object_or_404(Event, id=event_id)
+    booking = None
+    message = ''
+    success = False
+
+    if 'qr_text' in request.POST:
+        qr_text = request.POST.get('qr_text')
+        booking_id = extract_booking_id_from_text(qr_text)
+        if booking_id:
+            booking = Booking.objects.filter(id=booking_id, event=event).first()
+
+    elif 'qr_image' in request.FILES:
+        image_file = request.FILES['qr_image']
+        image_bytes = image_file.read()
+        qr_text = decode_qr_from_cv2(image_bytes)
+        booking_id = extract_booking_id_from_text(qr_text) if qr_text else None
+        if booking_id:
+            booking = Booking.objects.filter(id=booking_id, event=event).first()
+
+    if booking:
+        if booking.is_checked_in:
+            message = f"{booking.user.username} has already checked in."
+        else:
+            booking.is_checked_in = True
+            booking.save()
+            message = f"{booking.user.username} checked in successfully."
+        success = True
+    else:
+        message = "Invalid or unrecognized QR code."
+
+    bookings = Booking.objects.filter(event=event)
+    return render(request, 'admin/event_details.html', {
+        'event': event,
+        'bookings': bookings,
+        'checkin_result': {
+            'message': message,
+            'success': success
+        }
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def admin_event_details(request, event_id):
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return redirect('admin_login')
+
+    event = get_object_or_404(Event, id=event_id)
+    bookings = Booking.objects.filter(event=event).select_related('user')
+
+    return render(request, 'admin/event_details.html', {
+        'event': event,
+        'bookings': bookings,
+    })
+
+@require_http_methods(["POST"])
+def admin_delete_booking(request, booking_id):
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return redirect('admin_login')
+
+    booking = get_object_or_404(Booking, id=booking_id)
+    booking.delete()
+    messages.success(request, "Booking deleted successfully.")
+    return redirect('admin_event_details', event_id=booking.event.id)
+
 
 def admin_dashboard(request):
     if not request.user.is_authenticated or not request.user.is_superuser:

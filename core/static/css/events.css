@@ -215,3 +215,64 @@ form.row {
   color: #a0a0a0; 
   opacity: 1; 
 }
+
+/* Event Image Styling */
+.event-card img,
+.event-image img {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Image inside event detail */
+.event-image {
+    text-align: center;
+}
+
+/* Event Detail Header Fix */
+.event-detail-container h2 {
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+/* Adjust form inputs in dark background */
+form.row input,
+form.row select {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+}
+
+form.row input:focus,
+form.row select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0,123,255,0.6);
+}
+
+button,
+a.btn {
+    text-transform: none;
+    font-family: inherit;
+}
+
+p {
+    color: #cccccc;
+}
+
+.book-button {
+    text-align: center;
+    width: 100%;
+}
+
+p.no-events {
+    color: #fff;
+    text-align: center;
+    font-size: 1.2rem;
+    margin-top: 40px;
+}

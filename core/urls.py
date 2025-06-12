@@ -17,4 +17,8 @@ urlpatterns = [
     path('admin-panel/add/', views.admin_add_event, name='admin_add_event'),
     path('admin-panel/edit/<int:pk>/', views.admin_edit_event, name='admin_edit_event'),
     path('api/events/<int:pk>/', EventDetailAPIView.as_view(), name='event_detail_api'),
+    path('admin-panel/event/<int:event_id>/details/', views.admin_event_details, name='admin_event_details'),
+    path('admin-panel/booking/<int:booking_id>/delete/', views.admin_delete_booking, name='admin_delete_booking'),
+    path('admin-panel/event/<int:event_id>/checkin/', views.admin_checkin_qr, name='admin_checkin_qr'),
+
 ]

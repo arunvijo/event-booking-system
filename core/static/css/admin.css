@@ -155,3 +155,8 @@ canvas {
     padding: 1rem;
     margin-bottom: 40px;
 }
+
+.alert {
+  border-radius: 10px;
+  font-weight: 500;
+}

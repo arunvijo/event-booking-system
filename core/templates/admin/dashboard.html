@@ -50,6 +50,13 @@
         <p><strong>Seats:</strong> {{ event.available_seats }}/{{ event.total_seats }}</p>
         <p><strong>Price:</strong> ₹{{ event.price }}</p>
         <a href="{% url 'admin_edit_event' pk=event.id %}" class="btn-outline-light btn-sm text-decoration-none">Edit</a>
+        <a href="{% url 'admin_event_details' event_id=event.id %}" class="btn-outline-light btn-sm text-decoration-none">View</a>
+        <!-- <form method="POST" action="{% url 'event_detail_api' pk=event.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this event?');">
+            {% csrf_token %}
+            <input type="hidden" name="_method" value="DELETE">
+            <button type="submit" class="btn-outline-danger btn-sm text-decoration-none">Delete</button>
+        </form> -->
+
       </div>
       {% empty %}
       <p class="text-center text-light">No events available.</p>
