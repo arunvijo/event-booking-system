@@ -10,6 +10,7 @@
       rel="stylesheet"
     />
     {% load static %}
+    <link rel="stylesheet" href="{% static 'css/events.css' %}">
     <link href="{% static 'styles.css' %}" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'css/admin.css' %}">
 </head>
@@ -18,31 +19,32 @@
 <header>
   <img src="{% static 'logo.png' %}" alt="Logo" class="header-logo" />
   <div class="header-title">Event Booking System</div>
-  <div class="header-link d-flex gap-2 align-items-center">
+<div class="header-link d-flex gap-2 align-items-center">
 
-    {% if not request.user.is_authenticated %}
-      {% if request.path == '/login/' %}
-        <a href="{% url 'register' %}" class="btn btn-primary">Register</a>
-        <a href="{% url 'admin_login' %}" class="btn btn-secondary">Admin Login</a>
-      {% elif request.path == '/register/' %}
-        <a href="{% url 'login' %}" class="btn btn-primary">Login</a>
-      {% endif %}
-    {% else %}
-      <div class="d-flex justify-content-end align-items-center gap-3">
-        {% if request.user.is_superuser %}
-          <p class="mb-0">Welcome, <strong>Admin {{ request.user.username }}</strong></p>
-        {% else %}
-          <p class="mb-0">Welcome, <strong>{{ request.user.username }}</strong></p>
-        {% endif %}
-        <form action="{% url 'logout' %}" method="post" class="mb-0">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-light">Logout</button>
-        </form>
-      </div>
+  {% if not request.session.username %}
+    {% if request.path == '/' or request.path == '/login/' %}
+      <a href="{% url 'register' %}" class="btn btn-primary">Register</a>
+      <a href="{% url 'admin_login' %}" class="btn btn-secondary">Admin Login</a>
+    {% elif request.path == '/register/' %}
+      <a href="{% url 'login' %}" class="btn btn-primary">Login</a>
     {% endif %}
-  </div>
-</header>
+  {% else %}
+    <div class="d-flex justify-content-end align-items-center gap-3">
+      {% if request.session.username == 'vvdn' %}
+        <p class="mb-0">Welcome, <strong>Admin {{ request.session.username }}</strong></p>
+      {% else %}
+        <p class="mb-0">Welcome, <strong>{{ request.session.username }}</strong></p>
+      {% endif %}
+      <form action="{% url 'logout' %}" method="post" class="mb-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-light">Logout</button>
+      </form>
+    </div>
+  {% endif %}
 
+</div>
+
+</header>
 
 
 <div class="container">

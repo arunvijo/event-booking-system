@@ -385,7 +385,7 @@ class EventAPIView(APIView):
         if pk:
             # Detail view logic
             event = get_object_or_404(Event, pk=pk)
-            serializer = EventSerializer(event)
+            serializer = EventSerializer(event, context={'request': request})
             return render(request, 'events.html', {
                 'event': serializer.data,
                 'user': request.session.get('username'),
@@ -395,7 +395,6 @@ class EventAPIView(APIView):
                 }
             })
 
-        # List view logic
         events = Event.objects.all()
         search_query = request.GET.get('search')
         if search_query:
@@ -404,12 +403,13 @@ class EventAPIView(APIView):
         location_filter = request.GET.get('location')
         if location_filter:
             events = events.filter(location__iexact=location_filter)
-
         sort_by = request.GET.get('sort')
         if sort_by == 'date':
             events = events.order_by('date')
+        elif sort_by == 'price':
+            events = events.order_by('price')
 
-        serializer = EventSerializer(events, many=True)
+        serializer = EventSerializer(events, many=True, context={'request': request})
         unique_locations = Event.objects.values_list('location', flat=True).distinct()
 
         return render(request, 'events.html', {

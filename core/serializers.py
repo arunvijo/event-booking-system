@@ -7,9 +7,19 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class EventSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = Event
         fields = '__all__'
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        if obj.image and hasattr(obj.image, 'url'):
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
     def validate(self, data):
         name = data.get('name', getattr(self.instance, 'name', None))
@@ -23,8 +33,7 @@ class EventSerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError("An event with the same name, date, and location already exists.")
 
-        return data  
-
+        return data
 
 
 class RegisterSerializer(serializers.ModelSerializer):
