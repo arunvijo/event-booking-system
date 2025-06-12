@@ -21,6 +21,119 @@ import os
 from io import BytesIO
 from email.mime.image import MIMEImage
 from email.utils import make_msgid
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import user_passes_test
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Sum,Count
+from django.http import JsonResponse
+import json
+
+# Create your views here.
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from .models import Event
+from .serializers import EventSerializer
+from django.contrib.auth.models import AnonymousUser
+
+import json
+from django.db.models import Sum, Count
+from django.shortcuts import render
+from .models import Event, Booking
+from django.db.models.functions import TruncDate, TruncHour
+
+
+
+from django.shortcuts import render
+from django.db.models import Sum, Count
+from django.utils.timezone import localtime
+from collections import defaultdict
+import json
+from django.http import HttpResponse
+
+
+def admin_dashboard(request):
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return redirect('admin_login')
+
+    events = Event.objects.all()
+    total_events = events.count()
+    total_bookings = Booking.objects.count()
+    total_seats_booked = Booking.objects.aggregate(total=Sum('seats_booked'))['total'] or 0
+    total_available_seats = events.aggregate(total=Sum('available_seats'))['total'] or 0
+
+    # Booking over time (grouped by date)
+    booking_qs = Booking.objects.all()
+    booking_dict = defaultdict(int)
+    for b in booking_qs:
+        date_key = localtime(b.booking_time).strftime('%Y-%m-%d')
+        booking_dict[date_key] += 1
+    bookings_over_time = [{'date': k, 'count': v} for k, v in sorted(booking_dict.items())]
+
+    # Peak hours (grouped by hour of day)
+    peak_dict = defaultdict(int)
+    for b in booking_qs:
+        hour = localtime(b.booking_time).hour
+        peak_dict[hour] += 1
+    peak_hours = [{'hour': k, 'count': v} for k, v in sorted(peak_dict.items())]
+
+    return render(request, 'admin/dashboard.html', {
+        'events': events,
+        'total_events': total_events,
+        'total_bookings': total_bookings,
+        'total_seats_booked': total_seats_booked,
+        'total_available_seats': total_available_seats,
+        'bookings_over_time': json.dumps(bookings_over_time),
+        'peak_hours': json.dumps(peak_hours),
+    })
+
+
+
+@csrf_exempt
+def admin_login(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None and user.is_superuser:
+            login(request, user)
+            return redirect('admin_dashboard')
+        else:
+            return render(request, 'admin/login.html', {'error': 'Invalid credentials or not a superuser'})
+    return render(request, 'admin/login.html')
+
+
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def admin_add_event(request):
+    if request.method == 'POST':
+        serializer = EventSerializer(data=request.POST)
+        if serializer.is_valid():
+            serializer.save()
+            return redirect('admin_dashboard')
+        else:
+            return render(request, 'admin/add_event.html', {'errors': serializer.errors})
+    return render(request, 'admin/add_event.html')
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def admin_edit_event(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    if request.method == 'POST':
+        serializer = EventSerializer(event, data=request.POST, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return redirect('admin_dashboard')
+        else:
+            return render(request, 'admin/edit_event.html', {'errors': serializer.errors, 'event': serializer.data})
+    else:
+        serializer = EventSerializer(event)
+        return render(request, 'admin/edit_event.html', {'event': serializer.data})
+
 
 def send_booking_email(to_email, event, seats, qr_path):
     subject = f'Your Booking for {event.name} is Confirmed!'
@@ -121,15 +234,54 @@ def logout_view(request):
     messages.success(request, "You have been logged out successfully.")
     return redirect('login') 
 
-# Create your views here.
+
+class EventDetailAPIView(APIView):
+    def get_object(self, pk):
+        return get_object_or_404(Event, pk=pk)
+
+    def put(self, request, pk, format=None):
+        event = self.get_object(pk)
+        serializer = EventSerializer(event, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class EventAPIView(APIView):
-   def get(self, request, pk=None):
-    if pk:
-        # Detail view logic
-        event = get_object_or_404(Event, pk=pk)
-        serializer = EventSerializer(event)
+    def get(self, request, pk=None):
+        if pk:
+            # Detail view logic
+            event = get_object_or_404(Event, pk=pk)
+            serializer = EventSerializer(event)
+            return render(request, 'events.html', {
+                'event': serializer.data,
+                'user': request.session.get('username'),
+                'tokens': {
+                    'refresh': request.session.get('refresh'),
+                    'access': request.session.get('access')
+                }
+            })
+
+        # List view logic
+        events = Event.objects.all()
+        search_query = request.GET.get('search')
+        if search_query:
+            events = events.filter(name__icontains=search_query)
+
+        location_filter = request.GET.get('location')
+        if location_filter:
+            events = events.filter(location__iexact=location_filter)
+
+        sort_by = request.GET.get('sort')
+        if sort_by == 'date':
+            events = events.order_by('date')
+
+        serializer = EventSerializer(events, many=True)
+        unique_locations = Event.objects.values_list('location', flat=True).distinct()
+
         return render(request, 'events.html', {
-            'event': serializer.data,  # Single event object for detail view
+            'events': serializer.data,
+            'unique_locations': unique_locations,
             'user': request.session.get('username'),
             'tokens': {
                 'refresh': request.session.get('refresh'),
@@ -137,59 +289,35 @@ class EventAPIView(APIView):
             }
         })
 
-    # List view logic
-    events = Event.objects.all()
+    def post(self, request):
+        if not request.user or not request.user.is_authenticated or not request.user.is_superuser:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
-    search_query = request.GET.get('search')
-    if search_query:
-        events = events.filter(name__icontains=search_query)
+        serializer = EventSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Event created successfully"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    location_filter = request.GET.get('location')
-    if location_filter:
-        events = events.filter(location__iexact=location_filter)
+    def put(self, request, pk):
+        if not request.user or not request.user.is_authenticated or not request.user.is_superuser:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
-    sort_by = request.GET.get('sort')
-    if sort_by == 'date':
-        events = events.order_by('date')
-    # elif sort_by == 'price':
-    #     events = events.order_by('price')
+        event = get_object_or_404(Event, pk=pk)
+        serializer = EventSerializer(event, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Event updated successfully"})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    serializer = EventSerializer(events, many=True)
-    unique_locations = Event.objects.values_list('location', flat=True).distinct()
+    def delete(self, request, pk):
+        if not request.user or not request.user.is_authenticated or not request.user.is_superuser:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
-    return render(request, 'events.html', {
-        'events': serializer.data,
-        'unique_locations': unique_locations,
-        'user': request.session.get('username'),
-        'tokens': {
-            'refresh': request.session.get('refresh'),
-            'access': request.session.get('access')
-        }
-    })
+        event = get_object_or_404(Event, pk=pk)
+        event.delete()
+        return Response({"message": "Event deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
-
-
-
-   def post(self, request):
-       serializer = EventSerializer(data=request.data)
-       if serializer.is_valid():
-           serializer.save()
-           return Response({"message": "Event created successfully"}, status=status.HTTP_201_CREATED)
-       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-   def put(self, request, pk):
-       event = get_object_or_404(Event, pk=pk)
-       serializer = EventSerializer(event, data=request.data, partial=True)
-       if serializer.is_valid():
-           serializer.save()
-           return Response({"message": "Event updated successfully"})
-       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-   
-   def delete(self, request, pk):
-       event = get_object_or_404(Event, pk=pk)
-       event.delete()
-       return Response({"message": "Event deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 class RegisterAPIView(APIView):
     serializer_class = RegisterSerializer

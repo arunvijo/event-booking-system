@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Edit Event{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <h2 class="text-center">Edit Event</h2>
+  <form id="editEventForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="mb-3">
+      <label>Name:</label>
+      <input type="text" name="name" class="form-control" value="{{ event.name }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label>Date:</label>
+      <input type="datetime-local" name="date" id="eventDate" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label>Description:</label>
+      <textarea name="description" class="form-control">{{ event.description }}</textarea>
+    </div>
+
+    <div class="mb-3">
+      <label>Total Seats:</label>
+      <input type="number" name="total_seats" class="form-control" value="{{ event.total_seats }}">
+    </div>
+
+    <div class="mb-3">
+      <label>Available Seats:</label>
+      <input type="number" name="available_seats" class="form-control" value="{{ event.available_seats }}">
+    </div>
+
+    <div class="mb-3">
+      <label>Location:</label>
+      <input type="text" name="location" class="form-control" value="{{ event.location }}">
+    </div>
+
+    <div class="mb-3">
+      <label>Organizer:</label>
+      <input type="text" name="organizer" class="form-control" value="{{ event.organizer }}">
+    </div>
+
+    <div class="mb-3">
+      <label>Price:</label>
+      <input type="number" step="0.01" name="price" class="form-control" value="{{ event.price }}">
+    </div>
+
+    <div class="mb-3">
+      <label>Current Image:</label><br>
+      {% if event.image %}
+        <img id="imagePreview" src="{{ event.image.url }}" alt="Event Image" style="max-height: 150px; border-radius: 8px;">
+      {% else %}
+        <p>No image uploaded</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-3">
+      <label>Change Image:</label>
+      <input type="file" name="image" class="form-control" onchange="previewNewImage(event)">
+    </div>
+
+    <button type="submit" class="btn btn-primary">Update Event</button>
+  </form>
+</div>
+
+<script>
+  // Format date correctly
+  window.addEventListener("DOMContentLoaded", () => {
+    const eventDateField = document.getElementById("eventDate");
+    const rawDate = "{{ event.date|date:'c' }}";
+    if (rawDate) {
+      const formatted = new Date(rawDate).toISOString().slice(0, 16);
+      eventDateField.value = formatted;
+    }
+  });
+
+  // Preview newly chosen image
+  function previewNewImage(event) {
+    const imgTag = document.getElementById("imagePreview");
+    const file = event.target.files[0];
+    if (file) {
+      imgTag.src = URL.createObjectURL(file);
+    }
+  }
+
+  // Handle form submission
+  document.getElementById("editEventForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const response = await fetch("/api/events/{{ event.id }}/", {
+      method: "PUT",
+      body: formData
+    });
+
+    if (response.ok) {
+      alert("Event updated successfully");
+      window.location.href = "{% url 'admin_dashboard' %}";
+    } else {
+      const data = await response.json();
+      alert("Error: " + JSON.stringify(data));
+    }
+  });
+</script>
+{% endblock %}

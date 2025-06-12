@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2 class="events-title">Admin Dashboard</h2>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-button active" data-tab="overview">Overview</button>
+    <button class="tab-button" data-tab="manage">Manage Events</button>
+    <button class="tab-button" data-tab="analytics">Booking Analytics</button>
+  </div>
+
+  <!-- Tab Content: Overview -->
+  <div class="tab-content active" id="overview">
+    <div class="event-stats mt-4">
+      <div class="stat-item">
+        <span class="stat-label">Total Events</span>
+        <span class="stat-value">{{ total_events }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total Bookings</span>
+        <span class="stat-value">{{ total_bookings }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Seats Booked</span>
+        <span class="stat-value">{{ total_seats_booked }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Available Seats</span>
+        <span class="stat-value">{{ total_available_seats }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Content: Manage Events -->
+  <div class="tab-content" id="manage">
+    <div class="text-end mb-4">
+      <a href="{% url 'admin_add_event' %}" class="book-button" style="padding: 10px 18px; background-color: #3399ff; color: white; border-radius: 6px; text-decoration: none;">Add New Event</a>
+    </div>
+    <div class="events-grid mt-4">
+      {% for event in events %}
+      <div class="event-card">
+        <h4>{{ event.name }}</h4>
+        <p><strong>Date:</strong> {{ event.date|date:"Y-m-d H:i" }}</p>
+        <p><strong>Location:</strong> {{ event.location }}</p>
+        <p><strong>Organizer:</strong> {{ event.organizer }}</p>
+        <p><strong>Seats:</strong> {{ event.available_seats }}/{{ event.total_seats }}</p>
+        <p><strong>Price:</strong> ₹{{ event.price }}</p>
+        <a href="{% url 'admin_edit_event' pk=event.id %}" class="btn-outline-light btn-sm text-decoration-none">Edit</a>
+      </div>
+      {% empty %}
+      <p class="text-center text-light">No events available.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Tab Content: Analytics -->
+  <div class="tab-content" id="analytics">
+    {% if bookings_over_time|length == 0 and peak_hours|length == 0 %}
+      <p class="text-light mt-4">📉 No booking analytics data available yet.</p>
+    {% else %}
+      <canvas id="bookingChart" class="mb-5" style="max-height: 320px;"></canvas>
+      <canvas id="peakHoursChart" style="max-height: 300px;"></canvas>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Tabs logic
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  const bookingData = JSON.parse(`{{ bookings_over_time|escapejs|safe }}`);
+  const hourData = JSON.parse(`{{ peak_hours|escapejs|safe }}`);
+
+  if (bookingData.length > 0) {
+    new Chart(document.getElementById('bookingChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: bookingData.map(b => b.date),
+        datasets: [{
+          label: 'Bookings',
+          data: bookingData.map(b => b.count),
+          backgroundColor: 'rgba(51, 153, 255, 0.3)',
+          borderColor: '#3399ff',
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 4,
+          fill: true
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#ccc' } },
+          y: { ticks: { color: '#ccc' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  if (hourData.length > 0) {
+    new Chart(document.getElementById('peakHoursChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: hourData.map(h => `${h.hour}:00`),
+        datasets: [{
+          label: 'Bookings',
+          data: hourData.map(h => h.count),
+          backgroundColor: '#007bff',
+          borderRadius: 10
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: {
+          x: { ticks: { color: '#ccc' } },
+          y: { ticks: { color: '#ccc' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}

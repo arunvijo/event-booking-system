@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Add Event{% endblock %}
+{% block content %}
+<div class="form-container">
+  <h2 class="text-center">Add New Event</h2>
+  <form id="addEventForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3"><label>Name:</label><input type="text" name="name" class="form-control" required></div>
+    <div class="mb-3"><label>Date:</label><input type="datetime-local" name="date" class="form-control" required></div>
+    <div class="mb-3"><label>Description:</label><textarea name="description" class="form-control"></textarea></div>
+    <div class="mb-3"><label>Total Seats:</label><input type="number" name="total_seats" class="form-control" required></div>
+    <div class="mb-3"><label>Available Seats:</label><input type="number" name="available_seats" class="form-control" required></div>
+    <div class="mb-3"><label>Location:</label><input type="text" name="location" class="form-control"></div>
+    <div class="mb-3"><label>Organizer:</label><input type="text" name="organizer" class="form-control"></div>
+    <div class="mb-3"><label>Price:</label><input type="number" step="0.01" name="price" class="form-control"></div>
+    <div class="mb-3"><label>Image:</label><input type="file" name="image" class="form-control"></div>
+    <button type="submit" class="btn btn-primary">Add Event</button>
+  </form>
+</div>
+
+<script>
+document.getElementById("addEventForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  const response = await fetch("/api/events/", {
+    method: "POST",
+    body: formData
+  });
+
+  if (response.ok) {
+    alert("Event added successfully");
+    window.location.href = "{% url 'admin_dashboard' %}";
+  } else {
+    const data = await response.json();
+    alert("Error: " + JSON.stringify(data));
+  }
+});
+</script>
+{% endblock %}
