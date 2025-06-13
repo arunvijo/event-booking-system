@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}QR Booking{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <h2>Generate QR Booking</h2>
+  <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm mb-4">← Back to Login</a>
+
+  <div id="alert-box" class="alert d-none" role="alert"></div>
+
+  <form id="qrBookingForm">
+    {% csrf_token %}
+
+    <div class="mb-3">
+      <label for="name" class="form-label">Your Name</label>
+      <input type="text" id="name" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="email" class="form-label">Your Email</label>
+      <input type="email" id="email" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+      <label for="event" class="form-label">Select Event</label>
+      <select id="event" class="form-control" required>
+        <option value="" disabled selected>Select an event</option>
+        {% for event in events %}
+          <option value="{{ event.id }}">{{ event.name }} — {{ event.date }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="seats" class="form-label">Number of Seats</label>
+      <input type="number" id="seats" class="form-control" min="1" required />
+    </div>
+
+    <button type="submit" class="btn">Book Now & Generate QR</button>
+  </form>
+</div>
+
+<script>
+document.getElementById("qrBookingForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const event = document.getElementById("event").value;
+  const seats = document.getElementById("seats").value;
+  const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+  const alertBox = document.getElementById("alert-box");
+
+  try {
+    const response = await fetch("{% url 'generate_qr' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
+      },
+      body: JSON.stringify({
+        name: name,
+        email: email,
+        event: event,
+        seats_booked: seats,
+      }),
+    });
+
+    const data = await response.json();
+
+    alertBox.classList.remove("d-none", "alert-danger", "alert-success");
+
+    if (response.ok) {
+      alertBox.classList.add("alert-success");
+      alertBox.innerHTML = `Booking Successful! <br> Event: ${data.event} | Seats: ${data.seats_booked}`;
+      document.getElementById("qrBookingForm").reset();
+    } else {
+      alertBox.classList.add("alert-danger");
+      alertBox.innerText = Object.values(data).join("\n");
+    }
+  } catch (err) {
+    alertBox.classList.remove("d-none");
+    alertBox.classList.add("alert-danger");
+    alertBox.innerText = "Something went wrong. Please try again.";
+  }
+});
+</script>
+{% endblock %}

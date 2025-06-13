@@ -27,6 +27,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Sum,Count
 from django.http import JsonResponse
 import json
+import csv
 
 # Create your views here.
 from rest_framework.permissions import IsAuthenticated
@@ -77,6 +78,52 @@ import numpy as np
 
 from core.utils import decode_qr_from_cv2, extract_booking_id_from_text
 
+from .utils import send_booking_email  
+
+from django.contrib import messages
+
+
+
+def download_bookings_csv(request, event_id):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="event_{event_id}_bookings.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Name/Username', 'Seats Booked', 'Booking Time', 'Checked In'])
+
+    bookings = Booking.objects.filter(event_id=event_id)
+    qr_bookings = QrBooking.objects.filter(event_id=event_id)
+
+    for b in bookings:
+        writer.writerow([b.user.username, b.seats_booked, b.booking_time, 'Yes' if b.is_checked_in else 'No'])
+
+    for q in qr_bookings:
+        writer.writerow([q.name, q.seats_booked, q.booking_time, 'Yes' if q.is_checked_in else 'No'])
+
+    return response
+
+from django.template.loader import render_to_string
+from weasyprint import HTML
+from django.http import HttpResponse
+
+def download_bookings_pdf(request, event_id):
+    bookings = Booking.objects.filter(event_id=event_id)
+    qr_bookings = QrBooking.objects.filter(event_id=event_id)
+    event = Event.objects.get(id=event_id)
+
+    html_string = render_to_string('pdf_template.html', {
+        'event': event,
+        'bookings': bookings,
+        'qr_bookings': qr_bookings,
+    })
+    html = HTML(string=html_string)
+    pdf_file = html.write_pdf()
+
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="event_{event_id}_bookings.pdf"'
+    return response
+
+
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 @require_http_methods(["POST"])
@@ -91,6 +138,8 @@ def admin_checkin_qr(request, event_id):
         booking_id = extract_booking_id_from_text(qr_text)
         if booking_id:
             booking = Booking.objects.filter(id=booking_id, event=event).first()
+            if not booking:
+                booking = QrBooking.objects.filter(id=booking_id, event=event).first()
 
     elif 'qr_image' in request.FILES:
         image_file = request.FILES['qr_image']
@@ -99,67 +148,26 @@ def admin_checkin_qr(request, event_id):
         booking_id = extract_booking_id_from_text(qr_text) if qr_text else None
         if booking_id:
             booking = Booking.objects.filter(id=booking_id, event=event).first()
+            if not booking:
+                booking = QrBooking.objects.filter(id=booking_id, event=event).first()
 
     if booking:
         if booking.is_checked_in:
-            message = f"{booking.user.username} has already checked in."
+            message = f"{getattr(booking, 'user', getattr(booking, 'name', 'User'))} has already checked in."
         else:
             booking.is_checked_in = True
             booking.save()
-            message = f"{booking.user.username} checked in successfully."
+            message = f"{getattr(booking, 'user', getattr(booking, 'name', 'User'))} checked in successfully."
         success = True
     else:
         message = "Invalid or unrecognized QR code."
 
-    bookings = Booking.objects.filter(event=event)
-    return render(request, 'admin/event_details.html', {
-        'event': event,
-        'bookings': bookings,
-        'checkin_result': {
-            'message': message,
-            'success': success
-        }
-    })
+    request.session['checkin_result'] = {
+        'message': message,
+        'success': success
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return redirect('admin_event_details', event_id=event_id)
 
 
 
@@ -170,11 +178,23 @@ def admin_event_details(request, event_id):
 
     event = get_object_or_404(Event, id=event_id)
     bookings = Booking.objects.filter(event=event).select_related('user')
+    qr_bookings = QrBooking.objects.filter(event=event)
+
+    total_checkins = (
+        bookings.filter(is_checked_in=True).count() +
+        qr_bookings.filter(is_checked_in=True).count()
+    )
+
+    checkin_result = request.session.pop('checkin_result', None)
 
     return render(request, 'admin/event_details.html', {
         'event': event,
         'bookings': bookings,
+        'qr_bookings': qr_bookings,
+        'total_checkins': total_checkins,
+        'checkin_result': checkin_result,
     })
+
 
 @require_http_methods(["POST"])
 def admin_delete_booking(request, booking_id):
@@ -212,6 +232,18 @@ def admin_dashboard(request):
         peak_dict[hour] += 1
     peak_hours = [{'hour': k, 'count': v} for k, v in sorted(peak_dict.items())]
 
+    # Seats booked per event
+    seats_per_event = []
+    for event in events:
+        booked = Booking.objects.filter(event=event).aggregate(total=Sum('seats_booked'))['total'] or 0
+        seats_per_event.append({'name': event.name, 'booked': booked})
+
+    # Check-in data per event
+    checkin_data = []
+    for event in events:
+        checked_in = QrBooking.objects.filter(event=event, is_checked_in=True).count()
+        checkin_data.append({'name': event.name, 'checked_in': checked_in})
+
     return render(request, 'admin/dashboard.html', {
         'events': events,
         'total_events': total_events,
@@ -220,9 +252,9 @@ def admin_dashboard(request):
         'total_available_seats': total_available_seats,
         'bookings_over_time': json.dumps(bookings_over_time),
         'peak_hours': json.dumps(peak_hours),
+        'seats_per_event': json.dumps(seats_per_event),
+        'checkin_data': json.dumps(checkin_data),
     })
-
-
 
 @csrf_exempt
 def admin_login(request):
@@ -244,7 +276,7 @@ def admin_login(request):
 @user_passes_test(lambda u: u.is_superuser)
 def admin_add_event(request):
     if request.method == 'POST':
-        serializer = EventSerializer(data=request.POST)
+        serializer = EventSerializer(data=request.POST, files=request.FILES, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return redirect('admin_dashboard')
@@ -257,108 +289,16 @@ def admin_add_event(request):
 def admin_edit_event(request, pk):
     event = get_object_or_404(Event, pk=pk)
     if request.method == 'POST':
-        serializer = EventSerializer(event, data=request.POST, partial=True)
+        serializer = EventSerializer(event, data=request.POST, files=request.FILES, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return redirect('admin_dashboard')
         else:
             return render(request, 'admin/edit_event.html', {'errors': serializer.errors, 'event': serializer.data})
     else:
-        serializer = EventSerializer(event)
+        serializer = EventSerializer(event, context={'request': request})
         return render(request, 'admin/edit_event.html', {'event': serializer.data})
 
-
-def send_booking_email(to_email, event, seats, qr_path):
-    subject = f'Your Booking for {event.name} is Confirmed!'
-    total_price = event.price * seats
-    event_datetime = event.date.strftime('%A, %d %B %Y | %I:%M %p')
-
-    # Generate CIDs
-    qr_cid = make_msgid(domain='eventmail.local')[1:-1]
-    event_cid = make_msgid(domain='eventmail.local')[1:-1]
-
-    # Plain Text Body
-    text_body = (
-        f"Your booking for {event.name} is confirmed!\n\n"
-        f"Date & Time: {event_datetime}\n"
-        f"Location: {event.location}\n"
-        f"Organizer: {event.organizer}\n"
-        f"Seats Booked: {seats}\n"
-        f"Total Price: ₹{total_price:.2f}\n\n"
-        f"QR code and event image are attached.\n"
-    )
-
-    # HTML Body using CID for images
-    html_body = f"""
-    <html>
-    <body style="margin:0; padding:0; background-color:#121212; font-family:Arial,sans-serif; color:#f0f0f0;">
-    <div style="max-width:600px; margin:20px auto; background:linear-gradient(145deg,#1e1e1e,#2a2a2a); border:1px solid #3a3a3a; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,0.5); padding:20px;">
-
-        <h2 style="text-align:center; color:#27ae60;">🎟️ Booking Confirmed</h2>
-        <p style="text-align:center; color:#ccc;">Your booking for <strong>{event.name}</strong> is confirmed!</p>
-
-        {'<div style="text-align:center;"><img src="cid:{}" style="width:100%; max-width:300px; border-radius:12px; object-fit:cover;" alt="Event Image" /></div>'.format(event_cid) if event.image else ''}
-
-        <table style="width:100%; font-size:14px; margin-top:20px;">
-            <tr><td><strong>Date & Time:</strong></td><td>{event_datetime}</td></tr>
-            <tr><td><strong>Location:</strong></td><td>{event.location or 'To be announced'}</td></tr>
-            <tr><td><strong>Organizer:</strong></td><td>{event.organizer or 'Event Team'}</td></tr>
-            <tr><td><strong>Seats Booked:</strong></td><td>{seats}</td></tr>
-            <tr><td><strong>Total Price:</strong></td><td>₹{total_price:.2f}</td></tr>
-        </table>
-
-        <div style="margin-top:20px;">
-            <p><strong>Event Description:</strong></p>
-            <p style="background-color:#1b1b1b; padding:10px 15px; border-left:4px solid #27ae60; color:#bbbbbb;">
-                {event.description or 'No additional description provided.'}
-            </p>
-        </div>
-
-        <div style="text-align:center; margin-top:20px;">
-            <p>📎 Present this QR code at the event venue:</p>
-            <img src="cid:{qr_cid}" style="width:120px; height:120px; border-radius:10px; border:1px solid #444;" alt="QR Code" />
-        </div>
-
-        <p style="text-align:center; font-size:13px; color:#888; margin-top:30px;">
-            This is an automated email. Please do not reply.<br>
-            Regards, <strong>{event.organizer or 'Event Team'}</strong>
-        </p>
-
-    </div>
-    </body>
-    </html>
-    """
-
-    try:
-        email = EmailMultiAlternatives(subject, text_body, settings.EMAIL_HOST_USER, [to_email])
-        email.attach_alternative(html_body, "text/html")
-
-        # Attach inline QR image
-        if os.path.exists(qr_path):
-            with open(qr_path, 'rb') as f:
-                qr_image = MIMEImage(f.read())
-                qr_image.add_header('Content-ID', f'<{qr_cid}>')
-                qr_image.add_header('Content-Disposition', 'inline', filename='qr.png')
-                email.attach(qr_image)
-
-        # Attach inline Event image
-        if event.image and hasattr(event.image, 'path') and os.path.exists(event.image.path):
-            with open(event.image.path, 'rb') as f:
-                event_image = MIMEImage(f.read())
-                event_image.add_header('Content-ID', f'<{event_cid}>')
-                event_image.add_header('Content-Disposition', 'inline', filename='event.jpg')
-                email.attach(event_image)
-
-        # Optional: Attach as files too
-        # if os.path.exists(qr_path):
-        #     email.attach_file(qr_path)
-        # if event.image and hasattr(event.image, 'path') and os.path.exists(event.image.path):
-        #     email.attach_file(event.image.path)
-
-        email.send()
-        print("Email sent successfully with visible inline images!")
-    except Exception as e:
-        print("Error sending email:", e)
 
 
 
@@ -423,14 +363,15 @@ class EventAPIView(APIView):
         })
 
     def post(self, request):
-        if not request.user or not request.user.is_authenticated or not request.user.is_superuser:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        # if not request.user or not request.user.is_authenticated or not request.user.is_superuser:
+        #     return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = EventSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Event created successfully"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     def put(self, request, pk):
         if not request.user or not request.user.is_authenticated or not request.user.is_superuser:
@@ -450,7 +391,6 @@ class EventAPIView(APIView):
         event = get_object_or_404(Event, pk=pk)
         event.delete()
         return Response({"message": "Event deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-
 
 class RegisterAPIView(APIView):
     serializer_class = RegisterSerializer
@@ -608,18 +548,24 @@ class BookingCreateView(APIView):
 
     
 
+
 class QrBookingCreateView(APIView):
     serializer_class = QrBookingSerializer
 
     def get_serializer_context(self):
         return {"request": self.request}
 
+    def get(self, request, *args, **kwargs):
+        events = Event.objects.all().order_by('date')
+        return render(request, 'qr_booking.html', {'events': events})
+
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context=self.get_serializer_context())
-        
+
         if serializer.is_valid():
             booking = serializer.save()
             return Response(self.serializer_class(booking).data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 

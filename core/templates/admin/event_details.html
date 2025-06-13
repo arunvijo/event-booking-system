@@ -7,92 +7,133 @@
   <h2 class="text-white mb-3">Bookings for <span class="text-primary">{{ event.name }}</span></h2>
   <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-light btn-sm mb-4">← Back to Dashboard</a>
 
-  <div class="event-card mb-5">
-  <h4>Check-in Attendees</h4>
+  <h5 class="text-light mb-4">Total Check-ins: <span class="text-success">{{ total_checkins }}</span></h5>
 
-  <!-- Upload QR Code -->
+  <!-- Download Buttons -->
+  <div class="mb-4 d-flex flex-wrap gap-2">
+    <a href="{% url 'download_bookings_csv' event.id %}" class="btn btn-outline-success btn-sm">
+      ⬇️ Download CSV
+    </a>
+    <a href="{% url 'download_bookings_pdf' event.id %}" class="btn btn-outline-info btn-sm">
+      🧾 Download PDF
+    </a>
+  </div>
+
+  <!-- Check-in Area -->
+  <div class="event-card mb-5">
+    <h4>Check-in Attendees</h4>
+
+    <!-- Upload QR -->
     <form method="POST" enctype="multipart/form-data" action="{% url 'admin_checkin_qr' event.id %}">
-        {% csrf_token %}
-        <label class="form-label mt-3 text-light">Upload QR Code Image:</label>
-        <input type="file" name="qr_image" accept="image/*" class="form-control mb-3" required>
-        <button type="submit" class="btn btn-outline">Check-in via Upload</button>
+      {% csrf_token %}
+      <label class="form-label mt-3 text-light">Upload QR Code Image:</label>
+      <input type="file" name="qr_image" accept="image/*" class="form-control mb-3" required>
+      <button type="submit" class="btn btn-outline">Check-in via Upload</button>
     </form>
 
-    <!-- Camera QR Scanner -->
+    <!-- Camera Scanner -->
     <div class="mt-4">
-        <label class="form-label text-light">Scan QR Code via Camera:</label>
-        <div id="reader" class="border border-light rounded mt-2" style="max-width: 300px;"></div>
+      <label class="form-label text-light">Scan QR Code via Camera:</label>
+      <div id="reader" class="border border-light rounded mt-2" style="max-width: 300px;"></div>
     </div>
 
     {% if checkin_result %}
-        <div class="alert mt-4 {% if checkin_result.success %}alert-success{% else %}alert-danger{% endif %}">
+      <div class="alert mt-4 {% if checkin_result.success %}alert-success{% else %}alert-danger{% endif %}">
         {{ checkin_result.message }}
-        </div>
-    {% endif %}
-    </div>
-
-
-
- <div class="events-grid">
-  {% for booking in bookings %}
-    <div class="event-card">
-      <h4>{{ booking.user.username }}</h4>
-      <p><strong>Seats:</strong> {{ booking.seats_booked }}</p>
-      <p><strong>Time:</strong> {{ booking.booking_time|date:"Y-m-d H:i" }}</p>
-
-      {% if booking.is_checked_in %}
-        <span class="badge bg-success mb-2">Checked-in</span>
-      {% else %}
-        <span class="badge bg-secondary mb-2">Not Checked-in</span>
-      {% endif %}
-
-      <div class="mb-2">
-        {% if booking.qr_code %}
-          <img src="{{ booking.qr_code.url }}" alt="QR" class="img-fluid" style="width:120px;">
-        {% else %}
-          <span class="text-light">No QR Code</span>
-        {% endif %}
       </div>
+    {% endif %}
+  </div>
 
-      <form method="POST" action="{% url 'admin_delete_booking' booking.id %}" onsubmit="return confirm('Delete this booking?');">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-sm btn-outline">Delete</button>
-      </form>
-    </div>
-  {% endfor %}
-</div>
+  <!-- Booking Cards -->
+  <div class="events-grid">
+    {% for booking in bookings %}
+      <div class="event-card">
+        <h4>{{ booking.user.username }}</h4>
+        <p><strong>Seats:</strong> {{ booking.seats_booked }}</p>
+        <p><strong>Time:</strong> {{ booking.booking_time|date:"Y-m-d H:i" }}</p>
 
+        {% if booking.is_checked_in %}
+          <span class="badge bg-success mb-2">Checked-in</span>
+        {% else %}
+          <span class="badge bg-secondary mb-2">Not Checked-in</span>
+        {% endif %}
 
-<!-- QR Scanner Script -->
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-<script>
-  function postQRCodeData(decodedText) {
-    const formData = new FormData();
-    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-    formData.append('qr_text', decodedText);
+        <div class="mb-2">
+          {% if booking.qr_code %}
+            <img src="{{ booking.qr_code.url }}" alt="QR" class="img-fluid" style="width:120px;">
+            <a href="{{ booking.qr_code.url }}" download class="btn btn-sm btn-outline mt-2">Download Ticket</a>
+          {% else %}
+            <span class="text-light">No QR Code</span>
+          {% endif %}
+        </div>
 
-    fetch("{% url 'admin_checkin_qr' event.id %}", {
-      method: 'POST',
-      body: formData
-    }).then(() => {
-      location.reload();
-    });
-  }
+        <form method="POST" action="{% url 'admin_delete_booking' booking.id %}" onsubmit="return confirm('Delete this booking?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline">Delete</button>
+        </form>
+      </div>
+    {% endfor %}
 
-  const qrScanner = new Html5Qrcode("reader");
-  Html5Qrcode.getCameras().then(cameras => {
-    if (cameras.length) {
-      qrScanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        qrCodeMessage => {
-          qrScanner.stop();
-          postQRCodeData(qrCodeMessage);
-        }
-      );
+    {% for qr in qr_bookings %}
+      <div class="event-card">
+        <h4>{{ qr.name }}</h4>
+        <p><strong>Seats:</strong> {{ qr.seats_booked }}</p>
+        <p><strong>Time:</strong> {{ qr.booking_time|date:"Y-m-d H:i" }}</p>
+
+        {% if qr.is_checked_in %}
+          <span class="badge bg-success mb-2">Checked-in</span>
+        {% else %}
+          <span class="badge bg-secondary mb-2">Not Checked-in</span>
+        {% endif %}
+
+        <div class="mb-2">
+          {% if qr.qr_code %}
+            <img src="{{ qr.qr_code.url }}" alt="QR" class="img-fluid" style="width:120px;">
+            <a href="{{ qr.qr_code.url }}" download class="btn btn-sm btn-outline mt-2">Download Ticket</a>
+          {% else %}
+            <span class="text-light">No QR Code</span>
+          {% endif %}
+        </div>
+
+        <form method="POST" action="{% url 'admin_delete_booking' qr.id %}" onsubmit="return confirm('Delete this QR booking?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline">Delete</button>
+        </form>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- QR Scanner Script -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script>
+    function postQRCodeData(decodedText) {
+      const formData = new FormData();
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      formData.append('qr_text', decodedText);
+
+      fetch("{% url 'admin_checkin_qr' event.id %}", {
+        method: 'POST',
+        body: formData
+      }).then(() => {
+        window.location.href = "{% url 'admin_event_details' event.id %}";
+      });
     }
-  }).catch(err => {
-    console.error("Camera not accessible:", err);
-  });
-</script>
+
+    const qrScanner = new Html5Qrcode("reader");
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras.length) {
+        qrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
+          qrCodeMessage => {
+            qrScanner.stop();
+            postQRCodeData(qrCodeMessage);
+          }
+        );
+      }
+    }).catch(err => {
+      console.error("Camera not accessible:", err);
+    });
+  </script>
+</div>
 {% endblock %}

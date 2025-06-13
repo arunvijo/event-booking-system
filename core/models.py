@@ -66,6 +66,26 @@ class Booking(models.Model):
     
 class QrBooking(models.Model):
     name = models.CharField(max_length=100)
+    email = models.EmailField(default='default@example.com')  # ✅ default value added
     event = models.ForeignKey('Event', on_delete=models.CASCADE)
     seats_booked = models.PositiveIntegerField()
     booking_time = models.DateTimeField(auto_now_add=True)
+    qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+    is_checked_in = models.BooleanField(default=False) 
+
+    def generate_qr_code(self):
+        data = (
+            f'Booking ID: {self.id}\n'
+            f'Name: {self.name}\n'
+            f'Email: {self.email}\n'
+            f'Event: {self.event.name}\n'
+            f'Seats: {self.seats_booked}'
+        )
+        qr_img = qrcode.make(data)
+        buffer = BytesIO()
+        qr_img.save(buffer, format='PNG')
+        filename = f'booking_{self.id}_qr.png'
+        self.qr_code.save(filename, File(buffer), save=False)
+
+    def __str__(self):
+        return f'{self.name} - {self.event.name}'

@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% block title %}Add Event{% endblock %}
 {% block content %}
@@ -21,18 +22,28 @@
 <script>
 document.getElementById("addEventForm").addEventListener("submit", async function(e) {
   e.preventDefault();
-  const formData = new FormData(this);
-  const response = await fetch("/api/events/", {
-    method: "POST",
-    body: formData
-  });
 
-  if (response.ok) {
-    alert("Event added successfully");
-    window.location.href = "{% url 'admin_dashboard' %}";
-  } else {
-    const data = await response.json();
-    alert("Error: " + JSON.stringify(data));
+  const formData = new FormData(this);
+  const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+  try {
+    const response = await fetch("/events/", {
+      method: "POST",
+      headers: {
+        'X-CSRFToken': csrftoken
+      },
+      body: formData
+    });
+
+    if (response.ok) {
+      alert("Event added successfully");
+      window.location.href = "{% url 'admin_dashboard' %}";
+    } else {
+      const data = await response.json();
+      alert("Error: " + JSON.stringify(data));
+    }
+  } catch (error) {
+    alert("Network error: " + error.message);
   }
 });
 </script>

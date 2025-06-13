@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ event.name }} - Bookings</title>
+    <style>
+        body { font-family: sans-serif; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; }
+        th { background: #eee; }
+    </style>
+</head>
+<body>
+    <h2>Bookings for {{ event.name }}</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name / Username</th>
+                <th>Seats</th>
+                <th>Time</th>
+                <th>Checked In</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in bookings %}
+            <tr>
+                <td>{{ b.user.username }}</td>
+                <td>{{ b.seats_booked }}</td>
+                <td>{{ b.booking_time|date:"Y-m-d H:i" }}</td>
+                <td>{% if b.is_checked_in %}Yes{% else %}No{% endif %}</td>
+            </tr>
+            {% endfor %}
+            {% for q in qr_bookings %}
+            <tr>
+                <td>{{ q.name }}</td>
+                <td>{{ q.seats_booked }}</td>
+                <td>{{ q.booking_time|date:"Y-m-d H:i" }}</td>
+                <td>{% if q.is_checked_in %}Yes{% else %}No{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

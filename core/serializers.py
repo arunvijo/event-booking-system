@@ -3,17 +3,21 @@ from django.contrib.auth.models import User
 from .models import *
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from .utils import send_booking_email  
 
 
 
 class EventSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Event
-        fields = '__all__'
+        fields = '__all__'  # includes 'image'
+        extra_kwargs = {
+            'image': {'required': False, 'allow_null': True},
+        }
 
-    def get_image(self, obj):
+    def get_image_url(self, obj):
         request = self.context.get('request')
         if obj.image and hasattr(obj.image, 'url'):
             if request:
@@ -111,10 +115,12 @@ class BookingSerializer(serializers.ModelSerializer):
 
     
 class QrBookingSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(write_only=True)  # not saved in model, just for mailing
+
     class Meta:
         model = QrBooking
-        fields = ['id', 'name', 'event', 'seats_booked', 'booking_time']
-        read_only_fields = ['id', 'booking_time']
+        fields = ['id', 'name', 'email', 'event', 'seats_booked', 'booking_time', 'qr_code']
+        read_only_fields = ['id', 'booking_time', 'qr_code']
 
     def validate(self, data):
         event = data['event']
@@ -129,13 +135,24 @@ class QrBookingSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        email = validated_data.pop('email')  # extract for mail sending
         event = validated_data['event']
         seats_requested = validated_data['seats_booked']
 
+        # Subtract available seats
         event.available_seats -= seats_requested
         event.save()
 
+        # Create booking and QR
         booking = QrBooking.objects.create(**validated_data)
+        booking.generate_qr_code()
+        booking.save()
+
+        # Send email with QR
+        send_booking_email(email, booking.event, booking.seats_booked, booking.qr_code.path)
+
         return booking
+
+    
 
     

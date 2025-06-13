@@ -56,6 +56,14 @@
       margin-top: 15px;
     }
   }
+
+  /* Back button fixed on top-right */
+  .back-button-top {
+    position: absolute;
+    top: 100px; /* Adjust depending on your header height */
+    right: 30px;
+    z-index: 999;
+  }
 </style>
 
 <script>
@@ -80,6 +88,11 @@
     }
   }
 </script>
+
+<!-- Back button OUTSIDE container -->
+<div class="back-button-top">
+  <a href="{% url 'events' %}" class="btn btn-outline-light btn-sm">← Back to Dashboard</a>
+</div>
 
 <div class="container mt-5 booking-form-container">
 
