@@ -147,3 +147,10 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'u2203052@rajagiri.edu.in'       # Replace with your email
 EMAIL_HOST_PASSWORD = 'ygws ekzr zajb zbmt'
+
+MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    ...
+]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
