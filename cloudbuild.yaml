@@ -1,0 +1,19 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/django-backend', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/django-backend']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - event-backend
+      - --image=gcr.io/$PROJECT_ID/django-backend
+      - --region=asia-south1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --add-cloudsql-instances=event-management-system-463206:asia-south1:event-db
+      - --set-env-vars=DB_USER=django-user,DB_PASS=YourStrongPassword,DB_NAME=eventdb,DB_CONNECTION_NAME=event-management-system-463206:asia-south1:event-db
+images:
+  - gcr.io/$PROJECT_ID/django-backend

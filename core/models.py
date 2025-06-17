@@ -26,6 +26,7 @@ class Event(models.Model):
         blank=True,
         null=True,
         help_text="Upload an image for this event"
+        
     )
 
     def __str__(self):
