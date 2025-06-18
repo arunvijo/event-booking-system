@@ -11,18 +11,4 @@ pyzbar==0.1.9
 opencv-python==4.11.0.86
 reportlab==4.4.1
 psycopg2-binary>=2.9.9
-
-
-# For WeasyPrint dependencies
-fonttools==4.58.2
-tinycss2==1.4.0
-pyphen==0.17.2
-pydyf==0.11.0
-webencodings==0.5.1
-cssselect2==0.8.0
-
-# Optional but required for building some deps
-Brotli==1.1.0
-cffi==1.17.1
-pycparser==2.22
 sqlparse==0.5.3
