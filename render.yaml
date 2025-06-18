@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: event-booking
+    env: python
+    runtime: docker
+    plan: free
+    region: oregon
+    buildCommand: ""
+    startCommand: ""
+    autoDeploy: true
+
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        value: "your-super-secret-key"
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "event-booking.onrender.com"
+
+      # Database
+      - key: DATABASE_URL
+        value: "postgresql://eventbooking_db_user:UzqSIJQSaebqqHtU2bvwIjolsmJ0Wkg9@dpg-d194prruibrs73bqms50-a/eventbooking_db"  # from Render DB settings
+
+      # Gmail SMTP
+      - key: EMAIL_BACKEND
+        value: "django.core.mail.backends.smtp.EmailBackend"
+      - key: EMAIL_HOST
+        value: "smtp.gmail.com"
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: EMAIL_HOST_USER
+        value: "u2203052@rajagiri.edu.in"
+      - key: EMAIL_HOST_PASSWORD
+        value: "ygws ekzr zajb zbmt"
