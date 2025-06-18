@@ -5,7 +5,13 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    buildCommand: "python manage.py collectstatic --noinput"
+
+    buildCommand: |
+      pip install --upgrade pip
+      pip install numpy==1.26.4
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+
     startCommand: "gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT"
     autoDeploy: true
 
