@@ -7,6 +7,7 @@ services:
     region: oregon
 
     buildCommand: |
+      python manage.py migrate
       pip install --upgrade pip
       pip install numpy==1.26.4
       pip install -r requirements.txt
