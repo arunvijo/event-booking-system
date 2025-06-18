@@ -11,12 +11,13 @@ services:
       pip install numpy==1.26.4
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
+      echo "🔧 Using render.yaml"
 
-    startCommand: |
-      gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT
+    startCommand: gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT
 
     postDeploy:
       - python manage.py migrate
+
 
     autoDeploy: true
 
