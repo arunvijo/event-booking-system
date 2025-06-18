@@ -16,7 +16,9 @@ services:
     startCommand: gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT
 
     postDeploy:
+      - echo "🔧 Running Django migrations..."
       - python manage.py migrate
+
 
 
     autoDeploy: true

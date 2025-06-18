@@ -22,4 +22,5 @@ urlpatterns = [
     path('admin-panel/event/<int:event_id>/checkin/', views.admin_checkin_qr, name='admin_checkin_qr'),
     path('admin-panel/event/<int:event_id>/download/csv/', views.download_bookings_csv, name='download_bookings_csv'),
     path('admin-panel/event/<int:event_id>/download/pdf/', views.download_bookings_pdf, name='download_bookings_pdf'),
+    path('run-migrations/', RunMigrationsView.as_view()),
 ]

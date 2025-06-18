@@ -81,7 +81,13 @@ from core.utils import decode_qr_from_cv2, extract_booking_id_from_text
 from .utils import send_booking_email  
 
 from django.contrib import messages
+from django.core.management import call_command
 
+
+class RunMigrationsView(APIView):
+    def get(self, request):
+        call_command('migrate')
+        return Response({"status": "migrations applied"})
 
 
 def download_bookings_csv(request, event_id):
