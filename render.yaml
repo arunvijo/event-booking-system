@@ -12,7 +12,10 @@ services:
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
 
-    startCommand: "gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT"
+    startCommand: |
+      python manage.py migrate
+      gunicorn your_project_name.wsgi:application --bind 0.0.0.0:$PORT
+
     autoDeploy: true
 
     envVars:
