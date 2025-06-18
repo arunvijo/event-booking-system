@@ -6,7 +6,7 @@ services:
     plan: free
     region: oregon
     buildCommand: ""
-    startCommand: ""
+    startCommand: "gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT"
     autoDeploy: true
 
     envVars:
@@ -15,7 +15,8 @@ services:
       - key: DJANGO_DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
-        value: "event-booking.onrender.com"
+        value: "event-booking-system-b8ak.onrender.com"
+
 
       # Database
       - key: DATABASE_URL
