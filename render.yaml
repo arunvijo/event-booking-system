@@ -11,7 +11,7 @@ services:
 
     envVars:
       - key: DJANGO_SECRET_KEY
-        value: "your-super-secret-key"
+        value: "k3bpdner)i2^!rwh43_ag^yw!&4*c+v8!4p)9^43ux2kfw3o$8"
       - key: DJANGO_DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
