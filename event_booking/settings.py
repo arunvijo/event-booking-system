@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'rest_framework',
+    'core.apps.CoreConfig',
 ]
 
 # ------------------ Middleware ------------------

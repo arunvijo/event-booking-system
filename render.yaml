@@ -11,12 +11,12 @@ services:
       pip install numpy==1.26.4
       pip install -r requirements.txt
       python manage.py collectstatic --noinput
-      echo "🔧 Using render.yaml"
+      python manage.py makemigrations
+      python manage.py migrate
 
     startCommand: gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT
 
     postDeploy:
-      - echo "🔧 Running Django migrations..."
       - python manage.py migrate
 
 
