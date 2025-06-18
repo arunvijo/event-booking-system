@@ -33,5 +33,5 @@ RUN python manage.py collectstatic --noinput
 # Expose port Render uses
 EXPOSE 8080
 
-# Start Gunicorn server
-CMD ["gunicorn", "event_booking.wsgi:application", "--bind", "0.0.0.0:$PORT"]
+# Start Gunicorn server using shell form so $PORT gets expanded
+CMD gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT
