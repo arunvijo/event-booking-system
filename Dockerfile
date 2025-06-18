@@ -8,17 +8,24 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (for psycopg2 & Pillow etc.)
-RUN apt-get update \
-  && apt-get install -y build-essential libpq-dev gcc musl-dev libjpeg-dev zlib1g-dev \
+# Install system dependencies (OpenCV needs libglib, libsm, etc.)
+RUN apt-get update && apt-get install -y \
+  build-essential \
+  libpq-dev \
+  gcc \
+  musl-dev \
+  libjpeg-dev \
+  zlib1g-dev \
+  libgl1 \
+  libglib2.0-0 \
+  libsm6 \
+  libxrender1 \
+  libxext6 \
   && apt-get clean
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
-
-RUN apt-get update && apt-get install -y libgl1
-
 
 # Copy project files
 COPY . .
