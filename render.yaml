@@ -5,7 +5,7 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    buildCommand: ""
+    buildCommand: "python manage.py collectstatic --noinput"
     startCommand: "gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT"
     autoDeploy: true
 
@@ -17,10 +17,9 @@ services:
       - key: ALLOWED_HOSTS
         value: "event-booking-system-b8ak.onrender.com"
 
-
       # Database
       - key: DATABASE_URL
-        value: "postgresql://eventbooking_db_user:UzqSIJQSaebqqHtU2bvwIjolsmJ0Wkg9@dpg-d194prruibrs73bqms50-a/eventbooking_db"  # from Render DB settings
+        value: "postgresql://eventbooking_db_user:UzqSIJQSaebqqHtU2bvwIjolsmJ0Wkg9@dpg-d194prruibrs73bqms50-a/eventbooking_db"
 
       # Gmail SMTP
       - key: EMAIL_BACKEND

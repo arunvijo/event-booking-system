@@ -27,11 +27,8 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r re
 # Copy project files
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
 # Expose port Render uses
 EXPOSE 8080
 
-# Start Gunicorn server using shell form so $PORT gets expanded
+# Start Gunicorn server
 CMD gunicorn event_booking.wsgi:application --bind 0.0.0.0:$PORT

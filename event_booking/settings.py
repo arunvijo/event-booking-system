@@ -18,7 +18,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # ------------------ Security ------------------
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-secret")
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')  # now supports comma-separated values
+
 
 # ------------------ Installed Apps ------------------
 INSTALLED_APPS = [
@@ -42,6 +43,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
 ]
 
 # ------------------ Templates ------------------
@@ -66,6 +68,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'event_booking.wsgi.application'
 
 # ------------------ Database (PostgreSQL from Render) ------------------
+
 DATABASES = {
     'default': dj_database_url.config(default=os.environ.get("DATABASE_URL"))
 }

@@ -1,14 +1,27 @@
+# Django and REST Framework
 Django==5.2.1
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
+
+# WSGI Server for production
 gunicorn==21.2.0
-whitenoise>=6.6.0
+
+# Static files handling
+whitenoise==6.6.0  # already latest
+
+# Environment & DB
 dj-database-url==2.1.0
-python-dotenv>=1.0.0
-Pillow==11.2.1
+python-dotenv==1.0.1
+psycopg2-binary==2.9.9
+sqlparse==0.5.3
+
+# Image processing and QR
+Pillow==11.2.0  # Downgraded by one patch for opencv compatibility
 qrcode==8.2
 pyzbar==0.1.9
-opencv-python==4.11.0.86
+
+# OpenCV
+opencv-python==4.9.0.80  # 🔁 RECOMMENDED version (4.11 is *not* available on PyPI)
+
+# PDF Generation
 reportlab==4.4.1
-psycopg2-binary>=2.9.9
-sqlparse==0.5.3
