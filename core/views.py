@@ -103,26 +103,66 @@ def download_bookings_csv(request, event_id):
     return response
 
 from django.template.loader import render_to_string
-from weasyprint import HTML
 from django.http import HttpResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+
+
 
 def download_bookings_pdf(request, event_id):
     bookings = Booking.objects.filter(event_id=event_id)
     qr_bookings = QrBooking.objects.filter(event_id=event_id)
     event = Event.objects.get(id=event_id)
 
-    html_string = render_to_string('pdf_template.html', {
-        'event': event,
-        'bookings': bookings,
-        'qr_bookings': qr_bookings,
-    })
-    html = HTML(string=html_string)
-    pdf_file = html.write_pdf()
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
 
-    response = HttpResponse(pdf_file, content_type='application/pdf')
+    width, height = A4
+    y = height - inch
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(inch, y, f"Event: {event.name}")
+    y -= 20
+
+    p.setFont("Helvetica", 12)
+    p.drawString(inch, y, f"Date: {event.date}")
+    y -= 20
+    p.drawString(inch, y, f"Location: {event.location}")
+    y -= 40
+
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(inch, y, "Bookings:")
+    y -= 20
+
+    p.setFont("Helvetica", 12)
+    for booking in bookings:
+        if y < inch:
+            p.showPage()
+            y = height - inch
+        p.drawString(inch, y, f"{booking.user.username} - {booking.seats_booked} seat(s)")
+        y -= 15
+
+    y -= 20
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(inch, y, "QR Bookings:")
+    y -= 20
+
+    p.setFont("Helvetica", 12)
+    for qr_booking in qr_bookings:
+        if y < inch:
+            p.showPage()
+            y = height - inch
+        p.drawString(inch, y, f"{qr_booking.name} - {qr_booking.seats_booked} seat(s)")
+        y -= 15
+
+    p.save()
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="event_{event_id}_bookings.pdf"'
     return response
-
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)

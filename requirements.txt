@@ -10,7 +10,6 @@ qrcode==8.2
 pyzbar==0.1.9
 opencv-python==4.11.0.86
 reportlab==4.4.1
-weasyprint==65.1
 psycopg2-binary>=2.9.9
 
 
